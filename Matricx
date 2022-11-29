@@ -1,0 +1,471 @@
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+
+double Determinant(double**, int, int);
+void DeletM(double**, int);
+void CreateM(double**, int);
+bool Triang(double**, int, int);
+bool Diag(double**, int);
+double** invM(double**, double**, int, int);
+double** HaveDiag(double**, double**, int, int);
+
+int main(int argc, char* argv[]) {
+
+    char * inputFile = argv[2];
+	char * outputFile = argv[3];
+
+	std::ifstream inFile(inputFile);
+
+	std::ofstream outFile(outputFile);
+
+	int n = 0, m = 0, rev = 0, ind = 0;
+	char ch = inFile.get();
+
+	rev = ch;
+	if (rev != ' ') {
+		ind = rev - '0';
+		ind *= 10;
+	}
+	while ((ch = inFile.get()) != '\n') {
+		if (ch != ' ') {
+			ind += (ch - '0');
+			ind *= 10;
+		}
+		else {
+			if (rev != ' ') {
+				ind /= 10;
+				n = ind;
+				ind = 0;
+			}
+		}
+		rev = ch;
+	}
+	m = ind / 10;
+
+	char error[6] = "error";
+	if (m != n) {
+		outFile << error;
+		return 0;
+	}
+
+	double** Matrix = new double*[n];
+	CreateM(Matrix, n);
+
+	int sign = 1;
+	bool t = false;
+	bool zer = false;
+	int row = 0;
+	int col = 0;
+	ch = inFile.get();
+	rev = ch;
+	int h = 0;
+
+	if (rev != ' ' && rev != '\n' && rev != '-' && rev != '.') {
+		h = rev - '0';
+		h *= 10;
+	}
+	else if (rev == '-') {
+		sign = -1;
+	}
+
+	double **p = new double*[n];
+	CreateM(p, n);
+	
+	while ((ch = inFile.get()) != EOF) {
+		if (ch == '.') {
+			p[row][col] = 1;
+			zer = true;
+		}
+		if (ch == '-') {
+			sign = -1;
+		}
+		if (ch != ' ' && ch != '\n' && ch != '-' && ch != '.') {
+			h += (ch - '0');
+			h *= 10;
+		}
+		else {
+			if (rev != ' ' && rev != '\n' && rev != '-' && rev != '.') {
+				h /= 10;
+				h *= sign;
+				Matrix[row][col] = h;
+				if (col + 1 == m) {
+					col = 0;
+					++row;
+				}
+				else {
+					++col;
+				}
+				h = 0;
+				sign = 1;
+				t = false;
+			}
+		}
+		if (ch == '-') {
+			sign = -1;
+		}
+		
+		if (ch == '0' && rev == '.') {
+			t = true;
+			continue;
+		}
+
+		rev = ch;
+	}
+	if (!t) {
+		h /= 10;
+		Matrix[n - 1][m - 1] = h;
+	}
+
+	/*for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j) {
+			std::cout << p[i][j] << " ";
+		}
+	}
+	std::cout << '\n';
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j) {
+			std::cout << Matrix[i][j] << " ";
+		} std::cout << std::endl;
+	}*/
+
+	double det = 0;
+	bool f = false;
+	double** Matrix_2 = new double* [n];
+	for (int i = 0; i < n; ++i) {
+		Matrix_2[i] = new double[m];
+	}
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j) {
+			Matrix_2[i][j] = Matrix[i][j];
+		}
+	}
+	
+
+	if (Triang(Matrix, n, m)) {
+		row = 0;
+		det = 1;
+		while (row != n) {
+			det *= Matrix[row][row];
+			++row;
+		}
+		f = true;
+	}
+
+
+	if (!f) {
+		det = Determinant(Matrix, n, m);
+	}
+
+	std::cout << det << std::endl;
+
+	double** InvMatrix = new double* [n];
+	for (int i = 0; i < n; ++i) {
+		InvMatrix[i] = new double[m];
+	}
+
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j) {
+			if (InvMatrix[i][j] < 0.99) {
+				f = true;
+			}
+		}
+	}
+	char singular[9] = "singular";
+	if (det == 0 && argv[1][1] == 'i') {
+		outFile << singular;
+		return 0;
+	}
+	else if (det != 0 && argv[1][1] == 'i') {
+		InvMatrix = invM(Matrix_2,InvMatrix, n, m);
+	}
+
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j) {
+			std::cout << InvMatrix[i][j] << " ";
+		} std::cout << std::endl;
+	}
+
+
+	if (argv[1][1] == 'd' && det < -1000) {
+		outFile << det * 1e-18;
+	}
+	else if (argv[1][1] == 'd') {
+		
+		outFile << det;
+		if ((zer && (det > 0) && Matrix[0][0] != 1) || (zer && det == 0)) {
+			outFile << ".0";
+		}
+	}
+	int g = 0;
+	if (argv[1][1] == 'i') {
+		outFile << n << " " << n << "\n";
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < m; ++j) {
+				if (n > 90) {
+					outFile << InvMatrix[i][j];
+				}else if (p[i][j] == 1 && (InvMatrix[i][j] >= 1|| InvMatrix[i][j] == 0)) {
+					outFile <<InvMatrix[i][j] << ".0";
+				}
+				else if (InvMatrix[i][j] <= 0.99) {
+					g = static_cast<int>(InvMatrix[i][j]*1000);
+					if (std::abs(g)% 10 > 0) {
+						if (InvMatrix[i][j] < 1 && InvMatrix[i][j] != 0) {
+							outFile << std::fixed << std::setprecision(15) << InvMatrix[i][j];
+						}
+					}else if (std::abs(g)% 100 == 0) {
+						if (InvMatrix[i][j] < 1 && InvMatrix[i][j] != 0) {
+							outFile << std::fixed << std::setprecision(4) << InvMatrix[i][j];
+						}
+					}
+					else if (std::abs(g)%10>0){
+
+						outFile << InvMatrix[i][j];
+					}
+					
+				}
+				else if (p[i][j] != 1 && (InvMatrix[i][j] >= 1 || InvMatrix[i][j] == 0)) {
+					outFile << InvMatrix[i][j];
+				}
+				if (j != m - 1) {
+					outFile << " ";
+				}
+			}
+			if (i != n - 1) {
+				outFile.put('\n');
+			}
+		}
+	}
+	inFile.close();
+	outFile.close();
+	DeletM(Matrix, n);
+	DeletM(Matrix_2, n);
+	DeletM(InvMatrix, n);
+	DeletM(p,n);
+	return 0;
+}
+
+void CreateM(double** M, int row) {
+	for (int i = 0; i < row; ++i) {
+		M[i] = new double[row];
+	}
+	for (int i = 0; i < row; ++i) {
+		for (int j = 0; j < row; ++j) {
+			M[i][j] = 0.0;
+		}
+	}
+}
+
+bool Triang(double** M, int row, int col) {
+	bool temp = true;
+	for (int i = 0; i < row; ++i) {
+		for (int j = i + 1; j < col; ++j) {
+			if (M[i][j] != 0) {
+				temp = false;
+				break;
+			}
+		}
+		if (!temp) {
+			break;
+		}
+	}
+	if (temp) {
+		return true;
+	}
+	temp = true;
+	for (int i = 1; i < row; ++i) {
+		for (int j = 0; j < i; ++j) {
+			if (M[i][j] != 0) {
+				temp = false;
+				break;
+			}
+		}
+		if (!temp) {
+			break;
+		}
+	}
+	if (temp) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+double Determinant(double** M, int row, int col) {
+
+	double p = 1;
+	int k = 0;
+	double zer = false;
+	for (int i = 0; i < row; ++i) {
+		if (M[i][i] == 0) {
+			zer = true;
+			break;
+		}
+	}
+	double** Matrix = new double* [row];
+	CreateM(Matrix, row);
+
+	HaveDiag(M, Matrix, row, col);
+	
+	if (!Triang(M, row, col)) {
+		while (!Triang(M, row, col)) {
+			k = 0;
+			for (int i = 0; i < row - 1; ++i) {
+
+				for (int i_2 = i + 1; i_2 < row; ++i_2) {
+					if (M[i_2][k] == 0) {
+						continue;
+					}
+					else if (M[i][k] != 0) {
+						p = (M[i_2][k] / M[i][k]);
+					}
+					else if (M[i][k] == 0) {
+						p = 1;
+					}
+					for (int j = 0; j < col; ++j) {
+						M[i_2][j] -= (p * M[i][j]);
+					}
+					
+				}
+				++k;
+				
+				if (!zer) {
+					HaveDiag(M, Matrix, row, col);
+				}
+			}
+		}
+	}
+
+
+
+	p = 1;
+	for (int i = 0; i < row; ++i) {
+		p *= M[i][i];
+	}
+
+	DeletM(Matrix, row);
+	return p;
+}
+
+double** invM(double** M, double**E, int row, int col) {
+
+	for (int i = 0; i < row; ++i) {
+		for (int j = 0; j < col; ++j) {
+			if (i == j) {
+				E[i][j] = 1.0;
+			}
+			else {
+				E[i][j] = 0.0;
+			}
+		}
+	}
+	if (Diag(M, row)) {
+		return E;
+	}
+	HaveDiag(M, E, row, col);;
+
+	double p = 0;
+	int k = 0;
+	for (int i = 0; i < row - 1; ++i) {
+
+		for (int i_2 = i + 1; i_2 < row; ++i_2) {
+			if (M[i][k] != 0) {
+				p = (M[i_2][k] / M[i][k]);
+			}
+			else {
+				p = 1;
+			}
+			for (int j = 0; j < col; ++j) {
+				M[i_2][j] -= (p * M[i][j]);
+				E[i_2][j] -= (p * E[i][j]);
+			}
+		}
+		HaveDiag(M, E, row, col);
+		
+		++k;
+	}
+
+	for (int i = 0; i < row - 1; ++i) {
+		for (int i_2 = i + 1; i_2 < row; ++i_2) {
+			p = (M[i][i_2] / M[i_2][i_2]);
+
+			for (int j = 0; j < col; ++j) {
+				M[i][j] -= (p * M[i_2][j]);
+				E[i][j] -= (p * E[i_2][j]);
+			}
+			
+		}
+	}
+
+	for (int i = 0; i < row; ++i) {
+		if (M[i][i] != 1) {
+			p = M[i][i];
+			for (int g = 0; g < row; ++g) {
+				if (M[i][g] != 0) {
+					M[i][g] /= p;
+				}
+				E[i][g] /= p;
+				if (E[i][g] == -0) {
+					E[i][g] *= -1;
+				}
+			}
+		}
+	}
+	
+	return E;
+}
+double** HaveDiag(double** M, double** E, int row, int col) {
+	int k = 1;
+	for (int i = 0, j = 0; i < row; ++i, ++j) {
+		if (M[i][j] == 0 && i != row - 1) {
+			while (M[i + k][j] == 0 && (k+i+1) != row) {
+				++k;
+			}
+			if (M[i + k][j] == 0 && i != 0) {
+				--k;
+				while (k + i+1!= row && M[i + k][j] == 0)
+				--k;
+			}
+			for (int h = 0; h < col; ++h) {
+				M[i][h] -= M[i + k][h];
+				E[i][h] -= E[i + k][h];
+			}
+		}
+		else if (i == row - 1 && M[i][j] == 0) {
+			for (int h = 0; h < col; ++h) {
+				M[i][h] -= M[i - 1][h];
+				E[i][h] -= E[i - 1][h];
+			}
+		}
+		k = 1;
+		/*for (int i = 0; i < row; ++i) {
+			for (int j = 0; j < col; ++j) {
+				std::cout << M[i][j] << " ";
+			}std::cout << std::endl;
+		}*/
+	}
+	return M, E;
+}
+
+bool Diag(double** M, int row) {
+
+	for (int i = 0; i < row; ++i) {
+		for (int j = 0; j < row; ++j) {
+			if (i == j) {
+				continue;
+			}
+			else if (M[i][j] != 0) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+void DeletM(double** M, int row) {
+	for (int i = 0; i < row; ++i) {
+		delete[] M[i];
+	}
+	delete[] M;
+}
